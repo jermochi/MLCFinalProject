@@ -206,6 +206,14 @@ with analysis_tab1:
         
         # Coefficients
         st.markdown("### Feature Importance (Coefficients)")
+        st.caption(
+            """
+            **Interpretation:**
+            *   **Positive Coefficient (+):** As this feature increases, Life Expectancy tends to **increase**.
+            *   **Negative Coefficient (-):** As this feature increases, Life Expectancy tends to **decrease**.
+            *   **Magnitude:** Larger absolute values indicate a stronger influence on the prediction.
+            """
+        )
         coef_df = pd.DataFrame({'Feature': selected_features, 'Coefficient': model.coef_})
         coef_df = coef_df.sort_values(by='Coefficient', ascending=False)
         st.dataframe(coef_df, hide_index=True)
@@ -229,11 +237,6 @@ with analysis_tab2:
     k = st.slider("Number of Clusters (k)", min_value=2, max_value=10, value=3)
     
     if len(cluster_features) >= 2:
-        X_cluster = df[cluster_features]
-        
-        # Train K-Means
-        kmeans = KMeans(n_clusters=k, random_state=42, n_init=10)
-    if len(cluster_features) >= 2:
         # Train K-Means (Cached)
         clusters = get_kmeans_clusters(df, cluster_features, k)
         
@@ -250,6 +253,11 @@ with analysis_tab2:
         render_centered_plot(fig)
         
         st.markdown("### Cluster Statistics")
+        st.caption("The table below shows the **average (mean) value** of each feature for every cluster. This helps identify the characteristics that define each group (e.g., 'Cluster 0 has high GDP but low Life Expectancy').")
+        cluster_stats = df.groupby('Cluster')[cluster_features].mean()
+        st.dataframe(cluster_stats)
+    else:
+        st.warning("Please select at least two features for clustering.")
 st.divider()
 
 # 6. Conclusions
@@ -277,7 +285,17 @@ country_data = df[df['Country'] == selected_country]
 # Display Economy Status (Static)
 is_developed = country_data['Economy_status_Developed'].iloc[0] == 1
 status_text = "Developed" if is_developed else "Developing"
-st.markdown(f"**Economy Status:** {status_text}")
+
+# Handle Cluster Display
+cluster_text = ""
+if 'Cluster' in country_data.columns:
+    # Get the most frequent cluster (mode)
+    cluster_mode = country_data['Cluster'].mode()[0]
+    cluster_text = f" | **Cluster:** {cluster_mode}"
+    # Drop Cluster from data to be shown in table
+    country_data = country_data.drop(columns=['Cluster'])
+
+st.markdown(f"**Economy Status:** {status_text}{cluster_text}")
 
 # Pivot/Set Index to Year and drop redundant columns
 country_data = country_data.set_index('Year').sort_index()
@@ -330,6 +348,40 @@ with st.popover("Add filter", use_container_width=False):
 
 # Use the applied columns from session state
 if st.session_state.applied_columns:
-    st.dataframe(country_data[st.session_state.applied_columns])
+    display_df = country_data[st.session_state.applied_columns]
+    
+    def highlight_changes(data):
+        attr_better = 'color: green; font-weight: bold'
+        attr_worse = 'color: red; font-weight: bold'
+        
+        # Create empty style df
+        style_df = pd.DataFrame('', index=data.index, columns=data.columns)
+        
+        # Define directions
+        up_is_good = ['Life_expectancy', 'GDP_per_capita', 'Schooling', 'Polio', 'Diphtheria', 'Hepatitis_B', 'Measles']
+        down_is_good = ['Infant_deaths', 'Under_five_deaths', 'Adult_mortality', 'Incidents_HIV', 'Thinness_ten_nineteen_years', 'Thinness_five_nine_years', 'Alcohol_consumption']
+        
+        # Calculate diffs (numeric columns only)
+        numeric_cols = data.select_dtypes(include=['number']).columns
+        diffs = data[numeric_cols].diff()
+        
+        for col in numeric_cols:
+            if col in up_is_good:
+                style_df.loc[diffs[col] > 0, col] = attr_better
+                style_df.loc[diffs[col] < 0, col] = attr_worse
+            elif col in down_is_good:
+                style_df.loc[diffs[col] > 0, col] = attr_worse
+                style_df.loc[diffs[col] < 0, col] = attr_better
+                
+        return style_df
+
+    st.dataframe(
+        display_df.style.apply(highlight_changes, axis=None).format("{:.2f}"),
+        column_config={
+            col: st.column_config.Column(
+                help=utils.column_descriptions.get(col, "")
+            ) for col in display_df.columns
+        }
+    )
 else:
     st.warning("Please select at least one column to display.")
