@@ -1,11 +1,14 @@
 import streamlit as st
+import pandas as pd
 
 st.set_page_config(page_title="MLC Final Project", page_icon="🌍", layout="wide")
 
+# Project Overview
 st.title("WHO Life Expectancy Project Overview")
 st.caption("The Influence of Life Expectancy Determinants: Understanding and Predicting Global Longevity Trends")
 st.divider()
 
+# Dataset Introduction 
 dataset_col, stats_col = st.columns([3, 2])
 with dataset_col:
     st.header("1. 🌐 Dataset Introduction")
@@ -28,8 +31,39 @@ st.info(
     "The dataset gives us a away to analyze how socio-economic "
     "and public health factors work together to shape life expectancy."
 )
+
+# Load data
+@st.cache_data
+def load_data():
+    return pd.read_csv('data/life-exp-data.csv')
+
+df = load_data()
+
+@st.dialog("📊 Explore Dataset Structure & Columns", width="large")
+def show_dataset_details():
+    st.subheader("Raw Data Preview")
+    st.dataframe(df.head())
+    
+    st.subheader("Dataset Structure")
+    st.write(f"Shape: {df.shape[0]} rows, {df.shape[1]} columns")
+    
+    st.subheader("Column Details")
+    # TODO: i should probably add details on the columns and stuff
+    col_info = pd.DataFrame({
+        'Column Name': df.columns,
+        'Data Type': df.dtypes.astype(str).values,
+        'Sample Value': df.iloc[0].values
+    })
+    st.dataframe(col_info, hide_index=True, use_container_width=True)
+    
+    st.subheader("Statistical Summary")
+    st.write(df.describe())
+
+if st.button("View Dataset Details", use_container_width=True):
+    show_dataset_details()
 st.divider()
 
+# Research Question
 st.header("2. ❓ Research Question")
 st.header(
     """
@@ -38,6 +72,7 @@ st.header(
 )
 st.divider()
 
+# Analysis Techniques
 st.header("3. 🛠️ Selected Analysis Techniques")
 techniques = st.tabs(["Linear Regression", "K-means Clustering"])
 
