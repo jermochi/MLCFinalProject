@@ -125,7 +125,7 @@ def show_country_exploration(df):
             return style_df
 
         st.dataframe(
-            display_df.style.apply(highlight_changes, axis=None).format("{:.2f}"),
+            display_df.style.apply(highlight_changes, axis=None).format("{:.2f}", subset=display_df.select_dtypes(include=['number']).columns),
             column_config={
                 col: st.column_config.Column(
                     help=utils.column_descriptions.get(col, "")
