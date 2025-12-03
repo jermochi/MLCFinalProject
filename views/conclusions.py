@@ -23,7 +23,7 @@ def show_country_exploration(df):
     # Interactive exploration for conclusion
     st.subheader("Explore Specific Country Data")
     
-    unique_countries = df['Country'].unique().tolist()
+    unique_countries = sorted(df['Country'].unique().tolist())
     default_index = 0
     if "Philippines" in unique_countries:
         default_index = unique_countries.index("Philippines")
