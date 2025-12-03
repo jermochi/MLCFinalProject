@@ -45,13 +45,13 @@ def show_sidebar():
 
         st.markdown(
             """
-            <a class="nav-btn" href="#who-life-expectancy-project-overview">🏠 Overview</a>
-            <a class="nav-btn" href="#1-dataset-introduction">📊 1. Dataset Introduction</a>
-            <a class="nav-btn" href="#2-research-question">❓ 2. Research Question</a>
-            <a class="nav-btn" href="#3-selected-analysis-techniques">🔬 3. Analysis Techniques</a>
-            <a class="nav-btn" href="#4-data-exploration-preparation">🔍 4. Data Exploration</a>
-            <a class="nav-btn" href="#5-analysis-and-insights">📈 5. Analysis & Insights</a>
-            <a class="nav-btn" href="#6-conclusions-and-recommendations">📝 6. Conclusions</a>
+            <a class="nav-btn" href="#who-life-expectancy-project-overview"> Overview</a>
+            <a class="nav-btn" href="#1-dataset-introduction"> 1. Dataset Introduction</a>
+            <a class="nav-btn" href="#2-research-question"> 2. Research Question</a>
+            <a class="nav-btn" href="#3-selected-analysis-techniques"> 3. Analysis Techniques</a>
+            <a class="nav-btn" href="#4-data-exploration-preparation"> 4. Data Exploration</a>
+            <a class="nav-btn" href="#5-analysis-and-insights"> 5. Analysis & Insights</a>
+            <a class="nav-btn" href="#6-conclusions-and-recommendations"> 6. Conclusions</a>
             """,
             unsafe_allow_html=True
         )
