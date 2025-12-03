@@ -3,17 +3,57 @@ import utils
 
 def show_sidebar():
     with st.sidebar:
-        st.title("Navigation")
+        st.title("Final Project")
+        st.markdown("**MLC - CS365 - F1**")
+        st.markdown("Acebes - Ewican - Milleza")
+        
+        st.markdown("### Navigation")
+
+        # injected css cuz pasikat
         st.markdown(
             """
-            - [Overview](#who-life-expectancy-project-overview)
-            - [1. Dataset Introduction](#1-dataset-introduction)
-            - [2. Research Question](#2-research-question)
-            - [3. Analysis Techniques](#3-selected-analysis-techniques)
-            - [4. Data Exploration](#4-data-exploration-preparation)
-            - [5. Analysis & Insights](#5-analysis-and-insights)
-            - [6. Conclusions](#6-conclusions-and-recommendations)
+            <style>
+            a.nav-btn {
+                display: block;
+                padding: 10px 15px;
+                margin-bottom: 15px;
+                margin-right: 5px;
+                text-decoration: none !important;
+                color: var(--text-color) !important;
+                background-color: var(--background-color);
+                border-radius: 8px;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+                border: none;
+                transition: all 0.2s ease;
+                text-align: left;
+                font-weight: 600;
+            }
+            a.nav-btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 10px rgba(0,0,0,0.2);
+                color: var(--primary-color) !important;
+                text-decoration: none !important;
+            }
+            a.nav-btn:visited, a.nav-btn:active, a.nav-btn:focus {
+                color: var(--text-color) !important;
+                text-decoration: none !important;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+
+        st.markdown(
             """
+            <a class="nav-btn" href="#who-life-expectancy-project-overview">🏠 Overview</a>
+            <a class="nav-btn" href="#1-dataset-introduction">📊 1. Dataset Introduction</a>
+            <a class="nav-btn" href="#2-research-question">❓ 2. Research Question</a>
+            <a class="nav-btn" href="#3-selected-analysis-techniques">🔬 3. Analysis Techniques</a>
+            <a class="nav-btn" href="#4-data-exploration-preparation">🔍 4. Data Exploration</a>
+            <a class="nav-btn" href="#5-analysis-and-insights">📈 5. Analysis & Insights</a>
+            <a class="nav-btn" href="#6-conclusions-and-recommendations">📝 6. Conclusions</a>
+            """,
+            unsafe_allow_html=True
         )
         st.caption("Use links to jump to section")
 
