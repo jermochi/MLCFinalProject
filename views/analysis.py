@@ -62,6 +62,12 @@ def show_data_exploration(df):
 def show_analysis_insights(df):
     st.header("5. Analysis and Insights")
 
+    # Highlight Country Search
+    unique_countries = sorted(df['Country'].unique().tolist())
+    highlight_country = st.selectbox("Highlight Country (Optional)", ["None"] + unique_countries, index=0)
+    if highlight_country == "None":
+        highlight_country = None
+
     analysis_tab1, analysis_tab2 = st.tabs(["Linear Regression Analysis", "K-Means Clustering Analysis"])
 
     with analysis_tab1:
@@ -92,7 +98,7 @@ def show_analysis_insights(df):
             
             # Visualization: Actual vs Predicted
             st.markdown("### Actual vs Predicted Life Expectancy")
-            fig = view_utils.get_regression_plot(y, y_pred)
+            fig = view_utils.get_regression_plot(y, y_pred, df['Country'], highlight_country)
             view_utils.render_centered_plot(fig)
             
             # Coefficients
@@ -140,7 +146,7 @@ def show_analysis_insights(df):
             x_axis = cluster_features[0]
             y_axis = cluster_features[1]
             
-            fig = view_utils.get_cluster_plot(df, x_axis, y_axis)
+            fig = view_utils.get_cluster_plot(df, x_axis, y_axis, highlight_country)
             view_utils.render_centered_plot(fig)
             
             st.markdown("### Cluster Statistics")
