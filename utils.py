@@ -3,6 +3,9 @@ import streamlit as st
 
 @st.cache_data
 def load_data():
+    import os
+    if os.path.exists('data/life-exp-data.parquet'):
+        return pd.read_parquet('data/life-exp-data.parquet')
     return pd.read_csv('data/life-exp-data.csv')
 
 column_descriptions = {
