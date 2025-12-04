@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 from sklearn.metrics import r2_score, mean_squared_error
 import models
+import utils
+from countries import mapping
 from . import utils as view_utils
 
 def show_analysis_techniques():
@@ -31,8 +33,113 @@ def show_analysis_techniques():
     st.success("Together, these methods provide both predictive insight and clustering to show useable global information.")
     st.divider()
 
+
+@st.dialog("Country Details", width="large")
+def show_country_details(df, selected_country):
+    country_data = df[df['Country'] == selected_country]
+
+    # Display Economy Status (Static)
+    is_developed = country_data['Economy_status_Developed'].iloc[0] == 1
+    status_text = "Developed" if is_developed else "Developing"
+
+    # Handle Cluster Display
+    cluster_text = ""
+    if 'Cluster' in country_data.columns:
+        # Get the most frequent cluster (mode)
+        cluster_mode = country_data['Cluster'].mode()[0]
+        cluster_text = f" | **Cluster:** {cluster_mode}"
+        # Drop Cluster from data to be shown in table
+        country_data = country_data.drop(columns=['Cluster'])
+
+    st.markdown(f"### {selected_country}")
+    st.markdown(f"**Economy Status:** {status_text}{cluster_text}")
+
+    # Pivot/Set Index to Year and drop redundant columns
+    country_data = country_data.set_index('Year').sort_index()
+    country_data = country_data.drop(columns=['Country', 'Region', 'Economy_status_Developed', 'Economy_status_Developing'], errors='ignore')
+
+    # Column selection
+    all_columns = country_data.columns.tolist()
+
+    # Initialize session state for applied columns (table view)
+    # We use a unique key prefix for this dialog to avoid conflicts
+    ss_key_applied = f"applied_columns_{selected_country}"
+    if ss_key_applied not in st.session_state:
+        st.session_state[ss_key_applied] = all_columns
+
+    # Ensure applied_columns only contains valid columns
+    st.session_state[ss_key_applied] = [c for c in st.session_state[ss_key_applied] if c in all_columns]
+
+    # Initialize session state for checkbox keys (form view)
+    for col in all_columns:
+        key = f"chk_{col}_{selected_country}"
+        if key not in st.session_state:
+            st.session_state[key] = True
+
+    with st.popover("Add filter", use_container_width=False):
+        st.markdown("### Filter Columns")
+        
+        col1, col2 = st.columns(2)
+        if col1.button("Select All", key=f"btn_sel_all_{selected_country}", use_container_width=True):
+            for col in all_columns:
+                st.session_state[f"chk_{col}_{selected_country}"] = True
+            st.rerun()
+            
+        if col2.button("Clear All", key=f"btn_clr_all_{selected_country}", use_container_width=True):
+            for col in all_columns:
+                st.session_state[f"chk_{col}_{selected_country}"] = False
+            st.rerun()
+
+        with st.form(f"column_filter_form_{selected_country}"):
+            st.caption("Select columns to display in the table below.")
+            
+            with st.container(height=300):
+                for col in all_columns:
+                    st.checkbox(col, key=f"chk_{col}_{selected_country}")
+            
+            if st.form_submit_button("Apply Filters"):
+                selected = [col for col in all_columns if st.session_state.get(f"chk_{col}_{selected_country}", False)]
+                st.session_state[ss_key_applied] = selected
+                st.rerun()
+
+    if st.session_state[ss_key_applied]:
+        display_df = country_data[st.session_state[ss_key_applied]]
+        
+        def highlight_changes(data):
+            attr_better = 'color: green; font-weight: bold'
+            attr_worse = 'color: red; font-weight: bold'
+            
+            style_df = pd.DataFrame('', index=data.index, columns=data.columns)
+            
+            up_is_good = ['Life_expectancy', 'GDP_per_capita', 'Schooling', 'Polio', 'Diphtheria', 'Hepatitis_B', 'Measles']
+            down_is_good = ['Infant_deaths', 'Under_five_deaths', 'Adult_mortality', 'Incidents_HIV', 'Thinness_ten_nineteen_years', 'Thinness_five_nine_years', 'Alcohol_consumption']
+            
+            numeric_cols = data.select_dtypes(include=['number']).columns
+            diffs = data[numeric_cols].diff()
+            
+            for col in numeric_cols:
+                if col in up_is_good:
+                    style_df.loc[diffs[col] > 0, col] = attr_better
+                    style_df.loc[diffs[col] < 0, col] = attr_worse
+                elif col in down_is_good:
+                    style_df.loc[diffs[col] > 0, col] = attr_worse
+                    style_df.loc[diffs[col] < 0, col] = attr_better
+                    
+            return style_df
+
+        st.dataframe(
+            display_df.style.apply(highlight_changes, axis=None).format("{:.2f}", subset=display_df.select_dtypes(include=['number']).columns),
+            column_config={
+                col: st.column_config.Column(
+                    help=utils.column_descriptions.get(col, "")
+                ) for col in display_df.columns
+            }
+        )
+    else:
+        st.warning("Please select at least one column to display.")
+
 def show_data_exploration(df):
-    st.header("4. Data Exploration & Preparation")
+    st.header("4. Data Exploration & Preparation", anchor="4-data-exploration-preparation")
 
     st.subheader("Data Cleaning")
     st.markdown("Checking for missing values in the dataset:")
@@ -44,15 +151,50 @@ def show_data_exploration(df):
         st.write(missing_values[missing_values > 0])
 
     st.subheader("Exploratory Visualizations")
-    tab1, tab2 = st.tabs(["Correlation Heatmap", "Life Expectancy Distribution"])
+    tab1, tab2, tab3 = st.tabs(["Global Interactive Map", "Correlation Heatmap", "Life Expectancy Distribution"])
 
     with tab1:
+        st.markdown("### Global Life Expectancy Map")
+        st.markdown("Hover over a country to see details. **Click on a country to open a detailed exploration popup.**")
+        
+        fig = view_utils.get_interactive_map(df)
+
+        # Display map and capture selection
+        event = st.plotly_chart(
+            fig, 
+            on_select="rerun", 
+            selection_mode="points", 
+            use_container_width=True,
+            config={'scrollZoom': True, 'displayModeBar': True}
+        )
+
+        if event and "selection" in event and event["selection"]["points"]:
+            # Get selected country ISO Code from map
+            point = event["selection"]["points"][0]
+            
+            selected_iso = None
+            if "location" in point:
+                selected_iso = point["location"]
+            
+            if selected_iso:
+                # get map (cached if possible, but fast enough here)
+                unique_countries = df['Country'].unique()
+                iso_map = {mapping.get_iso3(c): c for c in unique_countries}
+                
+                selected_country_name = iso_map.get(selected_iso)
+                
+                if selected_country_name:
+                    show_country_details(df, selected_country_name)
+                else:
+                    st.error(f"Could not find data for country code: {selected_iso}")
+
+    with tab2:
         st.markdown("### Correlation Matrix")
         st.write("Visualizing how different variables correlate with each other.")
         fig = view_utils.get_correlation_heatmap(df)
         view_utils.render_centered_plot(fig)
 
-    with tab2:
+    with tab3:
         st.markdown("### Life Expectancy Distribution")
         fig = view_utils.get_distribution_plot(df)
         view_utils.render_centered_plot(fig)
@@ -61,7 +203,6 @@ def show_data_exploration(df):
 
 def show_analysis_insights(df):
     st.header("5. Analysis and Insights")
-
     # Highlight Country Search
     unique_countries = sorted(df['Country'].unique().tolist())
     highlight_country = st.selectbox("Highlight Country (Optional)", ["None"] + unique_countries, index=0)

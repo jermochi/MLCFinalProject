@@ -83,5 +83,46 @@ def plot_clusters(df, x_axis, y_axis, highlight_country=None):
             # Force highlight trace to be last (drawn on top)
             fig.data = tuple([t for t in fig.data if t.name != highlight_country] + [t for t in fig.data if t.name == highlight_country])
 
-    fig.update_layout(xaxis_fixedrange=True, yaxis_fixedrange=True, dragmode=False)
+from countries import mapping
+
+def plot_interactive_map(df):
+    # use latest year for snapshot
+    latest_year = df['Year'].max()
+    map_df = df[df['Year'] == latest_year].copy()
+    
+    # using 3 worders
+    map_df['ISO_Code'] = map_df['Country'].apply(mapping.get_iso3)
+    
+    # map itself
+    geojson_url = "https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json"
+    
+    fig = px.choropleth_mapbox(
+        map_df,
+        geojson=geojson_url,
+        locations="ISO_Code",
+        featureidkey="id",
+        color="Life_expectancy",
+        color_continuous_scale="RdYlGn",
+        range_color=(map_df['Life_expectancy'].min(), map_df['Life_expectancy'].max()),
+        mapbox_style="carto-positron",
+        zoom=1,
+        center={"lat": 20, "lon": 0},
+        opacity=0.7,
+        hover_name="Country",
+        hover_data={"Life_expectancy": True, "ISO_Code": False, "Country": False},
+        title=f"Life Expectancy by Country ({latest_year})",
+        height=600
+    )
+    
+    fig.update_layout(
+        margin={"r":0,"t":30,"l":0,"b":0},
+        clickmode='event+select'
+    )
+    
+    # Prevent dimming on selection
+    fig.update_traces(
+        unselected=dict(marker=dict(opacity=0.7)),
+        selected=dict(marker=dict(opacity=0.7))
+    )
+    
     return fig

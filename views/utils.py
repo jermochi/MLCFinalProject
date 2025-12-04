@@ -18,6 +18,10 @@ def get_regression_plot(y, y_pred, country_names=None, highlight_country=None):
 def get_cluster_plot(df, x_axis, y_axis, highlight_country=None):
     return plots.plot_clusters(df, x_axis, y_axis, highlight_country)
 
+@st.cache_resource
+def get_interactive_map(df):
+    return plots.plot_interactive_map(df)
+
 def render_centered_plot(fig):
     """Renders a plotly figure centered."""
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})

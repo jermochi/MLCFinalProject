@@ -32,5 +32,4 @@ views.show_analysis_insights(df)
 # Conclusions
 views.show_conclusions()
 
-# Interactive exploration for conclusion
-views.show_country_exploration(df)
+
