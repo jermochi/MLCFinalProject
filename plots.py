@@ -85,6 +85,7 @@ def plot_clusters(df, x_axis, y_axis, highlight_country=None):
             fig.data = tuple([t for t in fig.data if t.name != highlight_country] + [t for t in fig.data if t.name == highlight_country])
 
     fig.update_layout(xaxis_fixedrange=True, yaxis_fixedrange=True, dragmode=False)
+    return fig
 
 def plot_interactive_map(df):
     # use latest year for snapshot
