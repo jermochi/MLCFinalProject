@@ -1,6 +1,7 @@
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
+from countries import mapping
 
 def plot_correlation_heatmap(df):
     numeric_df = df.select_dtypes(include=['float64', 'int64'])
@@ -83,7 +84,7 @@ def plot_clusters(df, x_axis, y_axis, highlight_country=None):
             # Force highlight trace to be last (drawn on top)
             fig.data = tuple([t for t in fig.data if t.name != highlight_country] + [t for t in fig.data if t.name == highlight_country])
 
-from countries import mapping
+    fig.update_layout(xaxis_fixedrange=True, yaxis_fixedrange=True, dragmode=False)
 
 def plot_interactive_map(df):
     # use latest year for snapshot
@@ -116,9 +117,9 @@ def plot_interactive_map(df):
     
     fig.update_layout(
         margin={"r":0,"t":30,"l":0,"b":0},
-        clickmode='event+select'
+        clickmode='event+select',
+        xaxis_fixedrange=True, yaxis_fixedrange=True, dragmode=False
     )
-    
     # Prevent dimming on selection
     fig.update_traces(
         unselected=dict(marker=dict(opacity=0.7)),
