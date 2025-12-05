@@ -1,9 +1,12 @@
+from itertools import combinations, batched
+
 import streamlit as st
 import pandas as pd
 from sklearn.metrics import r2_score, mean_squared_error
 import models
 import utils
 from countries import mapping
+from models import train_regression_model
 from . import utils as view_utils
 
 def show_analysis_techniques():
@@ -220,8 +223,8 @@ def show_data_exploration(df):
 
     st.divider()
 
-def show_analysis_insights(df):
-    st.header("5. Analysis and Insights")
+def show_model_experimentation(df):
+    st.header("5. Model Experimentation and Testing", anchor="5-model-experimentation")
 
     st.markdown(
         """
@@ -326,4 +329,67 @@ def show_analysis_insights(df):
             st.dataframe(cluster_stats)
         else:
             st.warning("Please select at least two features for clustering.")
+    st.divider()
+
+def show_analysis_insights(df):
+    st.header("6. Analysis and Insights", anchor='6-analysis-and-insights')
+
+    st.markdown(
+        """
+        The previous sections introduced you to the dataset's features, as well as the analysis
+        techniques that are used in this project. Section 5 also let you experiment with what indicators
+        to use along with other parameters of the models to test your hypotheses on what predictors
+        influence life expectancy the most.
+        """
+    )
+
+    st.markdown(
+        """
+        Now, this section programmatically determines which combination of features predict life expectancy
+        the best, along with optimizing the model's parameters.
+        """
+    )
+
+    # Get columns and remove non-features
+    features = list(df.columns)
+    labels = {'Country', 'Region', 'Year', 'Life_expectancy'}
+    features = [x for x in features if x not in labels]
+
+    # Remove user-defined features
+    user_unwanted_features = st.multiselect(
+        "Select Features to Exclude",
+        features,
+    )
+    features = [x for x in features if x not in user_unwanted_features]
+
+    if st.button('Start Analysis'):
+        number_of_features = 3
+        feature_combinations = list(combinations(features, number_of_features))
+        results = []
+        for combination in feature_combinations:
+            # Create regression model
+            _, y_pred, _, y = train_regression_model(df, list(combination))
+            # Metrics
+            r2 = r2_score(y, y_pred)
+            mse = mean_squared_error(y, y_pred)
+            # Store results
+            results.append([combination, r2, mse])
+
+        # Sort results by descending r2
+        results.sort(key=lambda x: x[1], reverse=True)
+
+        n_models_to_show = 7
+        models_per_row = 3
+
+        # Display best models
+        best_models = results[:n_models_to_show]
+        for batch in batched(best_models, models_per_row):
+            cols = st.columns(len(batch))
+
+            for col, model in zip(cols, batch):
+                tile = col.container(height=120)
+
+                tile.subheader(model[0])
+                tile.metric("Accuracy", model[1])
+
     st.divider()

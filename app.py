@@ -26,6 +26,9 @@ views.show_analysis_techniques()
 # Data Exploration & Preparation
 views.show_data_exploration(df)
 
+# Model Experimentation
+views.show_model_experimentation(df)
+
 # Analysis and Insights
 views.show_analysis_insights(df)
 
