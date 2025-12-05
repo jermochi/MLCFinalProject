@@ -8,6 +8,16 @@ from . import utils as view_utils
 
 def show_analysis_techniques():
     st.header("3. Selected Analysis Techniques")
+    st.markdown(
+        """
+        We use Linear Regression to quantify the direct relationship between predictors 
+        (such as Adult Mortality or GDP) and Life Expectancy, allowing us to see exactly how 
+        much a specific factor influences longevity. Simultaneously, we apply K-Means Clustering 
+        to detect underlying patterns, grouping countries with similar characteristics to reveal 
+        global inequalities and development tiers without bias.
+        """
+    )
+
     techniques = st.tabs(["Linear Regression", "K-means Clustering"])
 
     with techniques[0]:
@@ -141,6 +151,15 @@ def show_country_details(df, selected_country):
 def show_data_exploration(df):
     st.header("4. Data Exploration & Preparation", anchor="4-data-exploration-preparation")
 
+    st.markdown(
+        """
+        This section confirms that our dataset is thoroughly cleaned and free of missing values, 
+        ensuring analysis reliability. Through interactive global maps and correlation heatmaps, 
+        you can explore the initial geographic trends and statistical relationships that 
+        we used for our predictive modeling.
+        """
+    )
+
     st.subheader("Data Cleaning")
     st.markdown("Checking for missing values in the dataset:")
     missing_values = df.isnull().sum()
@@ -203,6 +222,17 @@ def show_data_exploration(df):
 
 def show_analysis_insights(df):
     st.header("5. Analysis and Insights")
+
+    st.markdown(
+        """
+        This section serves as a hands-on laboratory exercise on the dataset, allowing you to test 
+        hypotheses in real-time. By selecting different predictor variables, such as Schooling 
+        or GDP per Capita, you can build custom Linear Regression models to see how well they predict 
+        Life Expectancy. Observe the R² Score to judge model accuracy and examine the coefficients 
+        to understand whether specific features act as positive drivers or negative barriers to health.
+        """
+    )
+
     # Highlight Country Search
     unique_countries = sorted(df['Country'].unique().tolist())
     highlight_country = st.selectbox("Highlight Country (Optional)", ["None"] + unique_countries, index=0)

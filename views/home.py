@@ -80,6 +80,7 @@ def show_dataset_introduction(df):
     with stats_col:
         st.metric("Rows", "approx. 3,000", "Country-Year pairs")
         st.metric("Columns", "22", "Health & economic features")
+        st.metric("Timeframe", "2000-2015", "Annual data from countries")
 
     st.info(
         "The dataset gives us a away to analyze how socio-economic "
@@ -107,10 +108,25 @@ def show_dataset_introduction(df):
     st.divider()
 
 def show_research_question():
-    st.header("2. Research Question")
-    st.header(
+    st.header("2. Research Questions")
+    st.markdown(
         """
-        *What are the most significant economic and public health factors (e.g., GDP, immunization rates, mortality) that statistically determine a country's Life Expectancy, and how can countries be segmented into distinct public health groups based on these metrics?*
+        Using the health and economic data in the dataset, we aimed to answer the following questions:
+        """
+    )
+    st.subheader(
+        """
+        What are the most significant :green[economic] and public :red[health factors] that statistically determine a country's :blue[Life Expectancy?]
+        """
+    )
+    st.subheader(
+        """
+        How can countries be :blue[segmented] into distinct public :orange[health groups] based on these metrics?
+        """
+    )
+    st.info(
+        """
+        You can experiment with various data analysis techniques and data features to use in the next sections of the app.
         """
     )
     st.divider()
