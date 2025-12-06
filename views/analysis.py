@@ -1,5 +1,3 @@
-from itertools import combinations, batched
-
 import streamlit as st
 import pandas as pd
 from sklearn.linear_model import LassoCV
@@ -9,7 +7,7 @@ from sklearn.preprocessing import StandardScaler
 import models
 import utils
 from countries import mapping
-from models import train_regression_model
+from models import get_kmeans_clusters_with_pca
 from . import utils as view_utils
 
 def show_analysis_techniques():
@@ -353,69 +351,113 @@ def show_analysis_insights(df):
         """
     )
 
-    st.subheader("Lasso (Regression)")
-    st.markdown(
-        """
-        Simply choosing a number of features and training a regression model is time-consuming and
-        often doesn't lead to the best model. Moreover, brute-forcing combinations and selecting 
-        models with the highest R² score almost guarantees that the best-performing model is 
-        memorizing the data, instead of learning patterns.
-        """
-    )
-    st.markdown(
-        """
-        This is where Lasso comes in. Using this method, irrelevant data features are removed and 
-        overfitting is avoided. This allows features with weak influence to be clearly identified as 
-        the coefficients of less important variables are shrunk toward zero.
-        """
-    )
+    analysis_tab1, analysis_tab2 = st.tabs(["Regression", "Clustering"])
 
-    # Get columns and remove non-features
-    features = list(df.columns)
-    labels = {'Country', 'Region', 'Year', 'Life_expectancy', 'Cluster'}
-    features = [x for x in features if x not in labels]
+    with analysis_tab1:
+        st.subheader("Lasso (Regression)")
+        st.markdown(
+            """
+            Simply choosing a number of features and training a regression model is time-consuming and
+            often doesn't lead to the best model. Moreover, brute-forcing combinations and selecting 
+            models with the highest R² score almost guarantees that the best-performing model is 
+            memorizing the data, instead of learning patterns.
+            """
+        )
+        st.markdown(
+            """
+            This is where Lasso comes in. It performs both variable selection and regularization 
+            in order to enhance the prediction accuracy and interpretability of the resulting model. 
+            Using this method, irrelevant data features are removed and overfitting is avoided. This
+            allows features with weak influence to be clearly identified as 
+            the coefficients of less important variables are shrunk toward zero.
+            """
+        )
 
-    if st.button('Start Analysis'):
-        X = df[features]
-        y = df['Life_expectancy']
+        # Get columns and remove non-features
+        features = list(df.columns)
+        labels = {'Country', 'Region', 'Year', 'Life_expectancy', 'Cluster'}
+        features = [x for x in features if x not in labels]
 
-        # Data scaling
-        scaler = StandardScaler()
-        X_scaled = scaler.fit_transform(X)
+        if st.button('Start Analysis'):
+            X = df[features]
+            y = df['Life_expectancy']
 
-        # Train Lasso with Cross-Validation (5-fold)
-        lasso = LassoCV(cv=5, random_state=42).fit(X_scaled, y)
+            # Data scaling
+            scaler = StandardScaler()
+            X_scaled = scaler.fit_transform(X)
 
-        # Get Feature Importance
-        coefs = pd.Series(lasso.coef_, index=features)
+            # Train Lasso with Cross-Validation (5-fold)
+            lasso = LassoCV(cv=5, random_state=42).fit(X_scaled, y)
 
-        # Filter useless features (coefficient approx 0)
-        selected_features = coefs[coefs != 0].sort_values(ascending=False)
-        removed_features = coefs[coefs == 0].sort_values(ascending=False)
+            # Get Feature Importance
+            coefs = pd.Series(lasso.coef_, index=features)
 
-        # Display Results
-        st.subheader("Optimal Features Selected by Lasso")
+            # Filter useless features (coefficient approx 0)
+            selected_features = coefs[coefs != 0].sort_values(ascending=False)
+            removed_features = coefs[coefs == 0].sort_values(ascending=False)
 
-        col1_1, col1_2 = st.columns([2, 1])
+            # Display Results
+            st.subheader("Optimal Features Selected by Lasso")
 
-        with col1_1:
-            st.bar_chart(selected_features)
-            st.caption("Feature weights (Positive = Increases Life Expectancy)")
+            col1_1, col1_2 = st.columns([2, 1])
 
-        with col1_2:
-            # Calculate metrics on the full set
-            y_pred = lasso.predict(X_scaled)
-            st.metric("Overall R² Score", f"{r2_score(y, y_pred):.4f}")
-            st.metric("Features Kept", f"{len(selected_features)} / {len(features)}")
-            st.metric("Best Alpha", f"{lasso.alpha_:.4f}")
+            with col1_1:
+                st.bar_chart(selected_features)
+                st.caption("Feature weights (Positive = Increases Life Expectancy)")
 
-        col2_1, col2_2 = st.columns([2, 1])
+            with col1_2:
+                # Calculate metrics on the full set
+                y_pred = lasso.predict(X_scaled)
+                st.metric("Overall R² Score", f"{r2_score(y, y_pred):.4f}")
+                st.metric("Features Kept", f"{len(selected_features)} / {len(features)}")
+                st.metric("Best Alpha", f"{lasso.alpha_:.4f}")
 
-        # Display the actual list
-        with col2_1:
-            st.write("Significant Predictors:", list(selected_features.index))
+            # Display the actual list
+            col2_1, col2_2 = st.columns([2, 1])
 
-        with col2_2:
-            st.write("Removed Predictors:", list(removed_features.index))
+            with col2_1:
+                st.write("Significant Predictors:", list(selected_features.index))
+
+            with col2_2:
+                st.write("Removed Predictors:", list(removed_features.index))
+
+    with analysis_tab2:
+        st.subheader("K-Means Clustering with PCA")
+        st.markdown(
+            """
+            Clustering high-dimensional data (datasets with many variables) can be difficult to visualize 
+            and prone to noise. To address this, we use **Principal Component Analysis (PCA)** before applying K-Means.
+
+            PCA is a dimensionality reduction technique that transforms our many health and economic 
+            indicators into a smaller set of "Principal Components" while retaining the majority of the 
+            data's information (variance). 
+
+            By plotting the first two components (**PC1 and PC2**), we can visualize how countries 
+            naturally separate on a 2-dimensional plane. While these axes are abstract representations, 
+            the resulting clusters group countries with similar development trajectories, allowing us 
+            to analyze their specific profiles below.
+            """
+        )
+        # Use elbow method later
+        number_of_clusters = 3
+
+        clusters, pca_df = get_kmeans_clusters_with_pca(df, features, number_of_clusters)
+
+        pca_df['Cluster'] = clusters
+        df['Cluster_Labels'] = clusters
+
+        fig = view_utils.get_cluster_plot(pca_df, 'PC1', 'PC2')
+        view_utils.render_centered_plot(fig)
+
+        st.subheader("Cluster Profiles")
+        # Group by the new cluster label and show the average of key stats
+        stats_to_show = st.multiselect(
+            "Select Predictors (X)",
+            features,
+            default=['GDP_per_capita', 'Schooling']
+        )
+
+        profile = df.groupby('Cluster_Labels')[stats_to_show].mean()
+        st.dataframe(profile)
 
     st.divider()
