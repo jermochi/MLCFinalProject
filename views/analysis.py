@@ -391,10 +391,12 @@ def show_analysis_insights(df):
 
             # Get Feature Importance
             coefs = pd.Series(lasso.coef_, index=features)
+            print(coefs)
 
             # Filter useless features (coefficient approx 0)
-            selected_features = coefs[coefs != 0].sort_values(ascending=False)
-            removed_features = coefs[coefs == 0].sort_values(ascending=False)
+            threshold = 1e-5
+            selected_features = coefs[abs(coefs) > threshold].sort_values(ascending=False, key=abs)
+            removed_features = coefs[abs(coefs) < threshold].sort_values(ascending=False)
 
             # Display Results
             st.subheader("Optimal Features Selected by Lasso")
