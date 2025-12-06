@@ -2,7 +2,10 @@ from itertools import combinations, batched
 
 import streamlit as st
 import pandas as pd
+from sklearn.linear_model import LassoCV
 from sklearn.metrics import r2_score, mean_squared_error
+from sklearn.preprocessing import StandardScaler
+
 import models
 import utils
 from countries import mapping
@@ -336,8 +339,8 @@ def show_analysis_insights(df):
 
     st.markdown(
         """
-        The previous sections introduced you to the dataset's features, as well as the analysis
-        techniques that are used in this project. Section 5 also let you experiment with what indicators
+        The previous sections introduced you to the dataset's features, as well as the common analysis
+        techniques used for these datasets. Section 5 also let you experiment with what indicators
         to use along with other parameters of the models to test your hypotheses on what predictors
         influence life expectancy the most.
         """
@@ -350,46 +353,69 @@ def show_analysis_insights(df):
         """
     )
 
+    st.subheader("Lasso (Regression)")
+    st.markdown(
+        """
+        Simply choosing a number of features and training a regression model is time-consuming and
+        often doesn't lead to the best model. Moreover, brute-forcing combinations and selecting 
+        models with the highest R² score almost guarantees that the best-performing model is 
+        memorizing the data, instead of learning patterns.
+        """
+    )
+    st.markdown(
+        """
+        This is where Lasso comes in. Using this method, irrelevant data features are removed and 
+        overfitting is avoided. This allows features with weak influence to be clearly identified as 
+        the coefficients of less important variables are shrunk toward zero.
+        """
+    )
+
     # Get columns and remove non-features
     features = list(df.columns)
-    labels = {'Country', 'Region', 'Year', 'Life_expectancy'}
+    labels = {'Country', 'Region', 'Year', 'Life_expectancy', 'Cluster'}
     features = [x for x in features if x not in labels]
 
-    # Remove user-defined features
-    user_unwanted_features = st.multiselect(
-        "Select Features to Exclude",
-        features,
-    )
-    features = [x for x in features if x not in user_unwanted_features]
-
     if st.button('Start Analysis'):
-        number_of_features = 3
-        feature_combinations = list(combinations(features, number_of_features))
-        results = []
-        for combination in feature_combinations:
-            # Create regression model
-            _, y_pred, _, y = train_regression_model(df, list(combination))
-            # Metrics
-            r2 = r2_score(y, y_pred)
-            mse = mean_squared_error(y, y_pred)
-            # Store results
-            results.append([combination, r2, mse])
+        X = df[features]
+        y = df['Life_expectancy']
 
-        # Sort results by descending r2
-        results.sort(key=lambda x: x[1], reverse=True)
+        # Data scaling
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
 
-        n_models_to_show = 7
-        models_per_row = 3
+        # Train Lasso with Cross-Validation (5-fold)
+        lasso = LassoCV(cv=5, random_state=42).fit(X_scaled, y)
 
-        # Display best models
-        best_models = results[:n_models_to_show]
-        for batch in batched(best_models, models_per_row):
-            cols = st.columns(len(batch))
+        # Get Feature Importance
+        coefs = pd.Series(lasso.coef_, index=features)
 
-            for col, model in zip(cols, batch):
-                tile = col.container(height=120)
+        # Filter useless features (coefficient approx 0)
+        selected_features = coefs[coefs != 0].sort_values(ascending=False)
+        removed_features = coefs[coefs == 0].sort_values(ascending=False)
 
-                tile.subheader(model[0])
-                tile.metric("Accuracy", model[1])
+        # Display Results
+        st.subheader("Optimal Features Selected by Lasso")
+
+        col1_1, col1_2 = st.columns([2, 1])
+
+        with col1_1:
+            st.bar_chart(selected_features)
+            st.caption("Feature weights (Positive = Increases Life Expectancy)")
+
+        with col1_2:
+            # Calculate metrics on the full set
+            y_pred = lasso.predict(X_scaled)
+            st.metric("Overall R² Score", f"{r2_score(y, y_pred):.4f}")
+            st.metric("Features Kept", f"{len(selected_features)} / {len(features)}")
+            st.metric("Best Alpha", f"{lasso.alpha_:.4f}")
+
+        col2_1, col2_2 = st.columns([2, 1])
+
+        # Display the actual list
+        with col2_1:
+            st.write("Significant Predictors:", list(selected_features.index))
+
+        with col2_2:
+            st.write("Removed Predictors:", list(removed_features.index))
 
     st.divider()
