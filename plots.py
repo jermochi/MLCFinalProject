@@ -128,3 +128,24 @@ def plot_interactive_map(df):
     )
     
     return fig
+
+def plot_elbow(k_values, inertias):
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatter(
+        x=k_values,
+        y=inertias,
+        mode='lines+markers',
+        marker=dict(size=8),
+        line=dict(dash='dash'),
+        name='Inertia'
+    ))
+
+    fig.update_layout(
+        title='Elbow Method for Optimal k',
+        xaxis_title='Number of Clusters (k)',
+        yaxis_title='Inertia (Sum of Squared Distances)',
+        template='plotly_white',
+        height=400
+    )
+    return fig

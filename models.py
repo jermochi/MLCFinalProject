@@ -1,8 +1,8 @@
 import pandas as pd
+import streamlit as st
 from sklearn.decomposition import PCA
 from sklearn.linear_model import LinearRegression
 from sklearn.cluster import KMeans
-import streamlit as st
 from sklearn.preprocessing import StandardScaler
 
 
@@ -37,3 +37,19 @@ def get_kmeans_clusters_with_pca(df, cluster_features, k):
     clusters = kmeans.fit_predict(X_scaled)
 
     return clusters, pca_df
+
+@st.cache_data
+def calculate_inertia_range(df, features, k_min=1, k_max=10):
+    X = df[features]
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+
+    inertias = []
+    k_range = range(k_min, k_max + 1)
+
+    for k in k_range:
+        kmeans = KMeans(n_clusters=k, random_state=42)
+        kmeans.fit(X_scaled)
+        inertias.append(kmeans.inertia_)
+
+    return list(k_range), inertias

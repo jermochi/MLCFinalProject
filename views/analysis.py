@@ -423,41 +423,89 @@ def show_analysis_insights(df):
 
     with analysis_tab2:
         st.subheader("K-Means Clustering with PCA")
+
         st.markdown(
             """
             Clustering high-dimensional data (datasets with many variables) can be difficult to visualize 
-            and prone to noise. To address this, we use **Principal Component Analysis (PCA)** before applying K-Means.
+            and prone to noise. To address this, we use **Principal Component Analysis (PCA)** before 
+            applying K-Means.
 
             PCA is a dimensionality reduction technique that transforms our many health and economic 
             indicators into a smaller set of "Principal Components" while retaining the majority of the 
             data's information (variance). 
 
             By plotting the first two components (**PC1 and PC2**), we can visualize how countries 
-            naturally separate on a 2-dimensional plane. While these axes are abstract representations, 
-            the resulting clusters group countries with similar development trajectories, allowing us 
-            to analyze their specific profiles below.
+            naturally separate on a 2-dimensional plane. The resulting clusters group countries with
+            similar development trajectories, allowing us to analyze their specific profiles below.
             """
         )
-        # Use elbow method later
-        number_of_clusters = 3
 
-        clusters, pca_df = get_kmeans_clusters_with_pca(df, features, number_of_clusters)
+        with st.expander("Determine Optimal Clusters (Elbow Method)", expanded=True):
+            st.write(
+                """
+                A more systematic way of finding the optimal number of clusters is the Elbow method.
+                It helps find the optimal number of clusters by looking for the 
+                'elbow' point where the inertia starts decreasing more slowly.
+                """
+            )
 
+            # Calculate inertia for k=1 to 10
+            k_values, inertias = models.calculate_inertia_range(df, features)
+
+            # Plot
+            elbow_fig = view_utils.get_elbow_plot(k_values, inertias)
+            view_utils.render_centered_plot(elbow_fig)
+
+            st.caption(
+                """
+                Notice how the change in inertia beyond k=3 is lesser than previous deltas. This indicates
+                that adding further clusters yields diminishing returns. Splitting the groups further 
+                would result in overfitting (creating artificial distinctions) rather than revealing 
+                meaningful insights.
+                """
+            )
+
+        st.divider()
+        st.subheader("Cluster Visualization")
+
+        # User selects K based on the chart above
+        number_of_clusters = st.slider("Select Number of Clusters (k)", min_value=2, max_value=10, value=3)
+
+        st.caption(
+            """
+            The optimal number of clusters is already selected by default. Observe how increasing the
+            number of clusters beyond the optimal number does not group the data points into distinct
+            clusters.
+            """
+        )
+
+        clusters, pca_df = models.get_kmeans_clusters_with_pca(df, features, number_of_clusters)
+
+        # Assign labels
         pca_df['Cluster'] = clusters
+        pca_df['Country'] = df['Country']
         df['Cluster_Labels'] = clusters
 
-        fig = view_utils.get_cluster_plot(pca_df, 'PC1', 'PC2')
+        # Highlight Country Search
+        unique_countries = sorted(df['Country'].unique().tolist())
+        highlight_country_analysis = st.selectbox("Highlight Country (Optional)", ["None"] + unique_countries, index=0, key=1)
+        if highlight_country_analysis == "None":
+            highlight_country = None
+
+        # Plot PCA
+        fig = view_utils.get_cluster_plot(pca_df, 'PC1', 'PC2', highlight_country_analysis)
         view_utils.render_centered_plot(fig)
 
         st.subheader("Cluster Profiles")
-        # Group by the new cluster label and show the average of key stats
         stats_to_show = st.multiselect(
-            "Select Predictors (X)",
+            "Select Predictors to Compare",
             features,
             default=['GDP_per_capita', 'Schooling']
         )
 
-        profile = df.groupby('Cluster_Labels')[stats_to_show].mean()
-        st.dataframe(profile)
+        if stats_to_show:
+            profile = df.groupby('Cluster_Labels')[stats_to_show].mean()
+            st.dataframe(
+                profile.style.highlight_max(axis=0, color='lightgreen').highlight_min(axis=0, color='lightcoral'))
 
     st.divider()
