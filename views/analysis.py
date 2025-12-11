@@ -184,32 +184,45 @@ def show_data_exploration(df):
 
         # Display map and capture selection
         event = st.plotly_chart(
-            fig, 
-            on_select="rerun", 
-            selection_mode="points", 
+            fig,
+            on_select="rerun",
+            selection_mode="points",
             use_container_width=True,
-            config={'scrollZoom': True, 'displayModeBar': True}
+            config={'scrollZoom': True, 'displayModeBar': True},
+            key="section_4_map"
         )
 
+        # tracking last map
+        if "map_prev_selection" not in st.session_state:
+            st.session_state.map_prev_selection = None
+
+        # extracting iso
+        current_iso = None
         if event and "selection" in event and event["selection"]["points"]:
-            # Get selected country ISO Code from map
             point = event["selection"]["points"][0]
-            
-            selected_iso = None
             if "location" in point:
-                selected_iso = point["location"]
-            
-            if selected_iso:
-                # get map (cached if possible, but fast enough here)
-                unique_countries = df['Country'].unique()
-                iso_map = {mapping.get_iso3(c): c for c in unique_countries}
-                
-                selected_country_name = iso_map.get(selected_iso)
-                
-                if selected_country_name:
-                    show_country_details(df, selected_country_name)
-                else:
-                    st.error(f"Could not find data for country code: {selected_iso}")
+                current_iso = point["location"]
+
+        #  fix to stop it rerunning
+        if current_iso is not None and current_iso != st.session_state.map_prev_selection:
+
+            # Update the "previous" state to match the current one
+            st.session_state.map_prev_selection = current_iso
+
+            # Logic to find the country name and show the dialog
+            unique_countries = df['Country'].unique()
+            iso_map = {mapping.get_iso3(c): c for c in unique_countries}
+
+            selected_country_name = iso_map.get(current_iso)
+
+            if selected_country_name:
+                show_country_details(df, selected_country_name)
+            else:
+                st.error(f"Could not find data for country code: {current_iso}")
+
+        # Reset state
+        elif current_iso is None:
+            st.session_state.map_prev_selection = None
 
     with tab2:
         st.markdown("### Correlation Matrix")
