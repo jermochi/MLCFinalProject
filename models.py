@@ -10,9 +10,14 @@ from sklearn.preprocessing import StandardScaler
 def train_regression_model(df, selected_features):
     X = df[selected_features]
     y = df['Life_expectancy']
+    
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    
     model = LinearRegression()
-    model.fit(X, y)
-    y_pred = model.predict(X)
+    model.fit(X_scaled, y)
+    y_pred = model.predict(X_scaled)
+    
     return model, y_pred, X, y
 
 @st.cache_data
