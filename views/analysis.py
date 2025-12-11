@@ -1,9 +1,13 @@
 import streamlit as st
 import pandas as pd
+from sklearn.linear_model import LassoCV
 from sklearn.metrics import r2_score, mean_squared_error
+from sklearn.preprocessing import StandardScaler
+
 import models
 import utils
 from countries import mapping
+from models import get_kmeans_clusters_with_pca
 from . import utils as view_utils
 
 def show_analysis_techniques():
@@ -220,8 +224,8 @@ def show_data_exploration(df):
 
     st.divider()
 
-def show_analysis_insights(df):
-    st.header("5. Analysis and Insights")
+def show_model_experimentation(df):
+    st.header("5. Model Experimentation and Testing", anchor="5-model-experimentation")
 
     st.markdown(
         """
@@ -326,4 +330,184 @@ def show_analysis_insights(df):
             st.dataframe(cluster_stats)
         else:
             st.warning("Please select at least two features for clustering.")
+    st.divider()
+
+def show_analysis_insights(df):
+    st.header("6. Analysis and Insights", anchor='6-analysis-and-insights')
+
+    st.markdown(
+        """
+        The previous sections introduced you to the dataset's features, as well as the common analysis
+        techniques used for these datasets. Section 5 also let you experiment with what indicators
+        to use along with other parameters of the models to test your hypotheses on what predictors
+        influence life expectancy the most.
+        """
+    )
+
+    st.markdown(
+        """
+        Now, this section programmatically determines which combination of features predict life expectancy
+        the best, along with optimizing the model's parameters.
+        """
+    )
+
+    analysis_tab1, analysis_tab2 = st.tabs(["Regression", "Clustering"])
+
+    with analysis_tab1:
+        st.subheader("Lasso (Regression)")
+        st.markdown(
+            """
+            Simply choosing a number of features and training a regression model is time-consuming and
+            often doesn't lead to the best model. Moreover, brute-forcing combinations and selecting 
+            models with the highest R² score almost guarantees that the best-performing model is 
+            memorizing the data, instead of learning patterns.
+            """
+        )
+        st.markdown(
+            """
+            This is where Lasso comes in. It performs both variable selection and regularization 
+            in order to enhance the prediction accuracy and interpretability of the resulting model. 
+            Using this method, irrelevant data features are removed and overfitting is avoided. This
+            allows features with weak influence to be clearly identified as 
+            the coefficients of less important variables are shrunk toward zero.
+            """
+        )
+
+        # Get columns and remove non-features
+        features = list(df.columns)
+        labels = {'Country', 'Region', 'Year', 'Life_expectancy', 'Cluster'}
+        features = [x for x in features if x not in labels]
+
+        if st.button('Start Analysis'):
+            X = df[features]
+            y = df['Life_expectancy']
+
+            # Data scaling
+            scaler = StandardScaler()
+            X_scaled = scaler.fit_transform(X)
+
+            # Train Lasso with Cross-Validation (5-fold)
+            lasso = LassoCV(cv=5, random_state=42).fit(X_scaled, y)
+
+            # Get Feature Importance
+            coefs = pd.Series(lasso.coef_, index=features)
+            print(coefs)
+
+            # Filter useless features (coefficient approx 0)
+            threshold = 1e-5
+            selected_features = coefs[abs(coefs) > threshold].sort_values(ascending=False, key=abs)
+            removed_features = coefs[abs(coefs) < threshold].sort_values(ascending=False)
+
+            # Display Results
+            st.subheader("Optimal Features Selected by Lasso")
+
+            col1_1, col1_2 = st.columns([2, 1])
+
+            with col1_1:
+                st.bar_chart(selected_features)
+                st.caption("Feature weights (Positive = Increases Life Expectancy)")
+
+            with col1_2:
+                # Calculate metrics on the full set
+                y_pred = lasso.predict(X_scaled)
+                st.metric("Overall R² Score", f"{r2_score(y, y_pred):.4f}")
+                st.metric("Features Kept", f"{len(selected_features)} / {len(features)}")
+                st.metric("Best Alpha", f"{lasso.alpha_:.4f}")
+
+            # Display the actual list
+            col2_1, col2_2 = st.columns([2, 1])
+
+            with col2_1:
+                st.write("Significant Predictors:", list(selected_features.index))
+
+            with col2_2:
+                st.write("Removed Predictors:", list(removed_features.index))
+
+    with analysis_tab2:
+        st.subheader("K-Means Clustering with PCA")
+
+        st.markdown(
+            """
+            Clustering high-dimensional data (datasets with many variables) can be difficult to visualize 
+            and prone to noise. To address this, we use **Principal Component Analysis (PCA)** before 
+            applying K-Means.
+
+            PCA is a dimensionality reduction technique that transforms our many health and economic 
+            indicators into a smaller set of "Principal Components" while retaining the majority of the 
+            data's information (variance). 
+
+            By plotting the first two components (**PC1 and PC2**), we can visualize how countries 
+            naturally separate on a 2-dimensional plane. The resulting clusters group countries with
+            similar development trajectories, allowing us to analyze their specific profiles below.
+            """
+        )
+
+        with st.expander("Determine Optimal Clusters (Elbow Method)", expanded=True):
+            st.write(
+                """
+                A more systematic way of finding the optimal number of clusters is the Elbow method.
+                It helps find the optimal number of clusters by looking for the 
+                'elbow' point where the inertia starts decreasing more slowly.
+                """
+            )
+
+            # Calculate inertia for k=1 to 10
+            k_values, inertias = models.calculate_inertia_range(df, features)
+
+            # Plot
+            elbow_fig = view_utils.get_elbow_plot(k_values, inertias)
+            view_utils.render_centered_plot(elbow_fig)
+
+            st.caption(
+                """
+                Notice how the change in inertia beyond k=3 is lesser than previous deltas. This indicates
+                that adding further clusters yields diminishing returns. Splitting the groups further 
+                would result in overfitting (creating artificial distinctions) rather than revealing 
+                meaningful insights.
+                """
+            )
+
+        st.divider()
+        st.subheader("Cluster Visualization")
+
+        # User selects K based on the chart above
+        number_of_clusters = st.slider("Select Number of Clusters (k)", min_value=2, max_value=10, value=3)
+
+        st.caption(
+            """
+            The optimal number of clusters is already selected by default. Observe how increasing the
+            number of clusters beyond the optimal number does not group the data points into distinct
+            clusters.
+            """
+        )
+
+        clusters, pca_df = models.get_kmeans_clusters_with_pca(df, features, number_of_clusters)
+
+        # Assign labels
+        pca_df['Cluster'] = clusters
+        pca_df['Country'] = df['Country']
+        df['Cluster_Labels'] = clusters
+
+        # Highlight Country Search
+        unique_countries = sorted(df['Country'].unique().tolist())
+        highlight_country_analysis = st.selectbox("Highlight Country (Optional)", ["None"] + unique_countries, index=0, key=1)
+        if highlight_country_analysis == "None":
+            highlight_country = None
+
+        # Plot PCA
+        fig = view_utils.get_cluster_plot(pca_df, 'PC1', 'PC2', highlight_country_analysis)
+        view_utils.render_centered_plot(fig)
+
+        st.subheader("Cluster Profiles")
+        stats_to_show = st.multiselect(
+            "Select Predictors to Compare",
+            features,
+            default=['GDP_per_capita', 'Schooling']
+        )
+
+        if stats_to_show:
+            profile = df.groupby('Cluster_Labels')[stats_to_show].mean()
+            st.dataframe(
+                profile.style.highlight_max(axis=0, color='lightgreen').highlight_min(axis=0, color='lightcoral'))
+
     st.divider()

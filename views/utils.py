@@ -25,3 +25,6 @@ def get_interactive_map(df):
 def render_centered_plot(fig):
     """Renders a plotly figure centered."""
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+
+def get_elbow_plot(k_values, inertias):
+    return plots.plot_elbow(k_values, inertias)

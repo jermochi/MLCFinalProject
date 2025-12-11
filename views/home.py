@@ -50,8 +50,9 @@ def show_sidebar():
             <a class="nav-btn" href="#2-research-question"> 2. Research Question</a>
             <a class="nav-btn" href="#3-selected-analysis-techniques"> 3. Analysis Techniques</a>
             <a class="nav-btn" href="#4-data-exploration-preparation"> 4. Data Exploration</a>
-            <a class="nav-btn" href="#5-analysis-and-insights"> 5. Analysis & Insights</a>
-            <a class="nav-btn" href="#6-conclusions-and-recommendations"> 6. Conclusions</a>
+            <a class="nav-btn" href="#5-model-experimentation"> 5. Model Experimentation</a>
+            <a class="nav-btn" href="#6-analysis-and-insights"> 6. Analysis and Insights</a>
+            <a class="nav-btn" href="#7-conclusions-and-recommendations"> 7. Conclusions</a>
             """,
             unsafe_allow_html=True
         )

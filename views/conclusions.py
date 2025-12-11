@@ -2,7 +2,7 @@ import streamlit as st
 
 
 def show_conclusions():
-    st.header("6. Conclusions and Recommendations")
+    st.header("7. Conclusions and Recommendations", anchor='7-conclusions-and-recommendations')
 
     st.markdown(
         """
